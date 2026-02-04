@@ -1,0 +1,68 @@
+volumes:
+  db-data: {}
+  dbc-logs: {}
+
+networks:
+  n1:
+    external: false
+
+services:
+  db:
+    image: ${EX01_POSTGRES_IMAGE}
+    # Refer to https://docs.docker.com/guides/databases/
+    # about the docker-entrypoint-initdb.d directory
+    volumes:
+      - ./scripts/postgres/create-dbs.sh:/docker-entrypoint-initdb.d/create-dbs.sh
+      - db-data:${EX01_POSTGRES_DATA_MOUNT_POINT}
+    environment:
+      - POSTGRES_USER=${EX01_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${EX01_POSTGRES_PASS}
+      - EX01_WM_DB_NAME
+      - EX01_WM_DB_USER_NAME
+      - EX01_WM_DB_USER_PASS
+      - EX01_WM_ARCHIVE_DB_NAME
+      - EX01_WM_ARCHIVE_DB_USER_NAME
+      - EX01_WM_ARCHIVE_DB_USER_PASS
+    networks:
+      n1:
+        aliases:
+          - db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "db_prod"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+
+  adminer:
+    image: adminer
+    networks:
+      - n1
+    ports:
+      - ${EX01_PORT_PREFIX}80:8080
+    depends_on:
+      db:
+        condition: service_healthy
+
+  dbc:
+    image: dbc-1101-full-alpine-test-1
+    volumes:
+      - dbc-logs:${EX01_DBC_LOGS_MOUNT_POINT}
+      - ./scripts/dbc/:${EX01_DBC_SCRIPTS_MOUNT_POINT}
+    networks:
+      - n1
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - EX01_DBC_WM_HOME
+      - EX01_POSTGRES_USER
+      - EX01_POSTGRES_PASS
+      - EX01_WM_DB_NAME
+      - EX01_WM_DB_USER_NAME
+      - EX01_WM_DB_USER_PASS
+      - EX01_WM_ARCHIVE_DB_NAME
+      - EX01_WM_ARCHIVE_DB_USER_NAME
+      - EX01_WM_ARCHIVE_DB_USER_PASS
+    entrypoint: ${EX01_DBC_SCRIPTS_MOUNT_POINT}/entrypoint.sh
+
