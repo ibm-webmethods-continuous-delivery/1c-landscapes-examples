@@ -1,0 +1,53 @@
+volumes:
+  db-data: {}
+  dbc-logs: {}
+
+networks:
+  n1:
+    external: false
+
+services:
+  db:
+    image: ${EX02_ORACLE_IMAGE}
+    hostname: db
+    volumes:
+      - db-data:${EX02_ORACLE_DATA_MOUNT_POINT}
+      - ./scripts/ora/scripts:/opt/oracle/scripts/startup
+    environment:
+      - ORACLE_CHARACTERSET=AL32UTF8
+      # - ORACLE_PDB
+      # - ORACLE_PWD
+    networks:
+      n1:
+        aliases:
+          - db
+    healthcheck:
+      test: ["CMD", "bash", "-c", "if [ $(echo 'SELECT 1 from dual;' | sqlplus ${EX02_WM_ARCHIVE_DB_USER_NAME}/${EX02_WM_ARCHIVE_DB_USER_PASS} | grep -c ERROR) -gt 0 ]; then exit 1; fi"]
+      interval: 20s
+      timeout: 20s
+      retries: 60
+
+  dbc:
+    image: dbc-1101-full-alpine-test-1
+    volumes:
+      - dbc-logs:${EX02_DBC_LOGS_MOUNT_POINT}
+      - ./scripts/dbc/:${EX02_DBC_SCRIPTS_MOUNT_POINT}
+    networks:
+      - n1
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - EX02_DBC_WM_HOME
+      - EX02_ORACLE_DATA_MOUNT_POINT
+      - EX02_WM_ARCHIVE_DB_NAME
+      - EX02_WM_ARCHIVE_DB_USER_NAME
+      - EX02_WM_ARCHIVE_DB_USER_PASS
+      - EX02_WM_DB_NAME
+      - EX02_WM_DB_USER_NAME
+      - EX02_WM_DB_USER_PASS
+      - ORACLE_CDB
+      - ORACLE_PDB
+      - ORACLE_PWD
+    entrypoint: ${EX02_DBC_SCRIPTS_MOUNT_POINT}/entrypoint.sh
+
