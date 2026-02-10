@@ -12,7 +12,7 @@ services:
     hostname: db
     volumes:
       - db-data:${EX02_ORACLE_DATA_MOUNT_POINT}
-      - ./scripts/ora/scripts:/opt/oracle/scripts/startup
+      - ./scripts/init/ora/scripts:/opt/oracle/scripts/startup
     environment:
       - ORACLE_CHARACTERSET=AL32UTF8
       # - ORACLE_PDB
@@ -31,7 +31,7 @@ services:
     image: dbc-1101-full-alpine-test-1
     volumes:
       - dbc-logs:${EX02_DBC_LOGS_MOUNT_POINT}
-      - ./scripts/dbc/:${EX02_DBC_SCRIPTS_MOUNT_POINT}
+      - ./scripts/init/dbc/:${EX02_DBC_SCRIPTS_MOUNT_POINT}
     networks:
       - n1
     depends_on:
@@ -49,5 +49,7 @@ services:
       - ORACLE_CDB
       - ORACLE_PDB
       - ORACLE_PWD
+    env_file:
+      - dbc.env
     entrypoint: ${EX02_DBC_SCRIPTS_MOUNT_POINT}/entrypoint.sh
 

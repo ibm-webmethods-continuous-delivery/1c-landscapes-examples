@@ -12,7 +12,7 @@ services:
     # Refer to https://docs.docker.com/guides/databases/
     # about the docker-entrypoint-initdb.d directory
     volumes:
-      - ./scripts/postgres/create-dbs.sh:/docker-entrypoint-initdb.d/create-dbs.sh
+      - ./scripts/init/postgres/create-dbs.sh:/docker-entrypoint-initdb.d/create-dbs.sh
       - db-data:${EX01_POSTGRES_DATA_MOUNT_POINT}
     environment:
       - POSTGRES_USER=${EX01_POSTGRES_USER}
@@ -48,7 +48,7 @@ services:
     image: dbc-1101-full-alpine-test-1
     volumes:
       - dbc-logs:${EX01_DBC_LOGS_MOUNT_POINT}
-      - ./scripts/dbc/:${EX01_DBC_SCRIPTS_MOUNT_POINT}
+      - ./scripts/init/dbc/:${EX01_DBC_SCRIPTS_MOUNT_POINT}
     networks:
       - n1
     depends_on:
@@ -64,5 +64,7 @@ services:
       - EX01_WM_ARCHIVE_DB_NAME
       - EX01_WM_ARCHIVE_DB_USER_NAME
       - EX01_WM_ARCHIVE_DB_USER_PASS
+    env_file:
+      - dbc.env
     entrypoint: ${EX01_DBC_SCRIPTS_MOUNT_POINT}/entrypoint.sh
 

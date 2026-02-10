@@ -36,11 +36,12 @@
 
 echo "=======ENTRYPOINT============= Initializing the main schema ${EX02_WM_DB_NAME}..."
   __l_db_url="jdbc:wm:oracle://db:1521;serviceName=${ORACLE_CDB}"
+  __l_components=${EX02_WM_DB_COMPONENTS:-all}
 
   "${EX02_DBC_WM_HOME}"/common/db/bin/dbConfigurator.sh \
   --action create \
   --dbms oracle \
-  --component all \
+  --component "${__l_components}" \
   --version latest \
   --url "${__l_db_url}" \
   --printActions \
@@ -71,7 +72,7 @@ echo "=======ENTRYPOINT============= Initializing the main schema ${EX02_WM_DB_N
 
 echo "=======ENTRYPOINT============= Initializing the archive schema ${EX02_WM_ARCHIVE_DB_NAME}..."
   __l_db_url="jdbc:wm:oracle://db:1521;serviceName=${ORACLE_CDB}"
-  __l_arc_components="ActiveTransferArchive,Archive,ComponentTracker,TaskArchive,TradingNetworksArchive"
+  __l_arc_components="${EX02_WM_ARCHIVE_DB_COMPONENTS:-ActiveTransferArchive,Archive,ComponentTracker,TaskArchive,TradingNetworksArchive}"
 
   "${EX02_DBC_WM_HOME}"/common/db/bin/dbConfigurator.sh \
   --action create \
@@ -86,6 +87,4 @@ echo "=======ENTRYPOINT============= Initializing the archive schema ${EX02_WM_A
   --user "${EX02_WM_ARCHIVE_DB_USER_NAME}" \
   --password "${EX02_WM_ARCHIVE_DB_USER_PASS}"
 
-env | sort
-
-sleep infinity
+unset __l_db_url __l_components __l_arc_components

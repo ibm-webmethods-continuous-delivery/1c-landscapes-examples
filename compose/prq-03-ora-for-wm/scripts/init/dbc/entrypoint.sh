@@ -109,11 +109,12 @@ sleep 60
 
 echo "=======ENTRYPOINT============= Initializing the main schema ${EX03_WM_DB_NAME}..."
   __l_db_url="jdbc:wm:oracle://db:1521;serviceName=${ORACLE_CDB}"
+  __l_components=${EX03_WM_DB_COMPONENTS:-all}
 
   "${EX03_DBC_WM_HOME}"/common/db/bin/dbConfigurator.sh \
   --action create \
   --dbms oracle \
-  --component all \
+  --component "${__l_components}" \
   --version latest \
   --url "${__l_db_url}" \
   --printActions \
@@ -126,7 +127,7 @@ echo "=======ENTRYPOINT============= Initializing the main schema ${EX03_WM_DB_N
 
 echo "=======ENTRYPOINT============= Initializing the archive schema ${EX03_WM_ARCHIVE_DB_NAME}..."
   __l_db_url="jdbc:wm:oracle://db:1521;serviceName=${ORACLE_CDB}"
-  __l_arc_components="ActiveTransferArchive,Archive,ComponentTracker,TaskArchive,TradingNetworksArchive"
+  __l_arc_components="${EX03_WM_ARCHIVE_DB_COMPONENTS:-ActiveTransferArchive,Archive,ComponentTracker,TaskArchive,TradingNetworksArchive}"
 
   "${EX03_DBC_WM_HOME}"/common/db/bin/dbConfigurator.sh \
   --action create \

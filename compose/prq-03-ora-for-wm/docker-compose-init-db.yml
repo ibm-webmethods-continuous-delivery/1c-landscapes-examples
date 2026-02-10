@@ -30,7 +30,7 @@ services:
     image: dbc-1101-full-alpine-test-1
     volumes:
       - dbc-logs:${EX03_DBC_LOGS_MOUNT_POINT}
-      - ./scripts/dbc/:${EX03_DBC_SCRIPTS_MOUNT_POINT}
+      - ./scripts/init/dbc/:${EX03_DBC_SCRIPTS_MOUNT_POINT}
     networks:
       - n1
     depends_on:
@@ -48,5 +48,7 @@ services:
       - ORACLE_CDB
       - ORACLE_PDB
       - ORACLE_PWD
+    env_file:
+      - dbc.env
     entrypoint: ${EX03_DBC_SCRIPTS_MOUNT_POINT}/entrypoint.sh
 

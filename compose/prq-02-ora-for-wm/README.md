@@ -1,6 +1,6 @@
 # Prerequisite 02 - Example of Oracle Database for webMethods
 
-This project contains an example of how to create a containerized Oracle database for use with webMethods. It is useful for various landscapes, therefore is has been made a separate building block.
+This project contains an example of how to create a containerized Oracle database for use with webMethods. It is useful for various landscapes, therefore is has been made a separate building block. It is also designed to be easily merged in other landscape examples as a supporting database.
 
 webMethods databases MUST be managed at DDL (Data Definition Language) level using the product tool DBC (Database Configuration). This example assumes the image for DBC has been built previously. See the following references:
 
