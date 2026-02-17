@@ -1,7 +1,8 @@
 volumes:
   db-data:
     name: ex04-db-data
-  # dbc-logs: {}
+  mft-root:
+    name: ex04-mft-root
 
 networks:
   n1:
@@ -12,6 +13,7 @@ services:
     image: ${EX04_POSTGRES_IMAGE}
     # Refer to https://docs.docker.com/guides/databases/
     # about the docker-entrypoint-initdb.d directory
+    container_name: ex04-db
     volumes:
       - ./scripts/init/postgres/create-dbs.sh:/docker-entrypoint-initdb.d/create-dbs.sh
       - db-data:${EX04_POSTGRES_DATA_MOUNT_POINT}
@@ -35,28 +37,35 @@ services:
       retries: 5
       start_period: 80s
 
-  dbc:
-    image: ${EX04_DBC_IMAGE}
-    volumes:
-      # Do not mount the logs folder when using the MFT OOTB image
-      # - dbc-logs:${EX04_DBC_LOGS_MOUNT_POINT}
-      - ./scripts/init/dbc/:${EX04_DBC_SCRIPTS_MOUNT_POINT}
+  adminer:
+    image: adminer
+    container_name: ex04-adminer
+    networks:
+      - n1
+    ports:
+      - ${EX04_PORT_PREFIX}80:8080
+    depends_on:
+      db:
+        condition: service_healthy
+
+  mft:
+    image: ${EX04_MFT_IMAGE}
+    container_name: ex04-mft
     networks:
       - n1
     depends_on:
       db:
         condition: service_healthy
     environment:
-      - EX04_DBC_WM_HOME
-      - EX04_POSTGRES_USER
-      - EX04_POSTGRES_PASS
       - EX04_WM_DB_NAME
       - EX04_WM_DB_USER_NAME
       - EX04_WM_DB_USER_PASS
+
       - EX04_WM_ARCHIVE_DB_NAME
       - EX04_WM_ARCHIVE_DB_USER_NAME
       - EX04_WM_ARCHIVE_DB_USER_PASS
-    env_file:
-      - dbc.env
-    entrypoint: ${EX04_DBC_SCRIPTS_MOUNT_POINT}/entrypoint.sh
-
+    volumes:
+      - ./config/mft/application.properties:/opt/softwareag/IntegrationServer/application.properties
+      - mft-root:/opt/mft-root
+    ports:
+      - ${EX04_PORT_PREFIX}55:5555
