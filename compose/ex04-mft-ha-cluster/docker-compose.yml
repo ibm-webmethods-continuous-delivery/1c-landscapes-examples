@@ -1,30 +1,41 @@
 volumes:
+  # Database supporting AT
   db-data:
-    name: ex04-db-data
-  mft-root:
-    name: ex04-mft-root
+    name: ex04-ha-db-data
+  # One Common volume for two AT nodes sharing a VFS default directory
+  mft-vft:
+    name: ex04-ha-mft-vfs
+  # AT node 1 volumes
+  at1-logs:
+    name: ex04-ha-at1-logs
+  at1-local:
+    name: ex04-ha-at1-local
+  # File Transfer Test Doubles Volumes
   ft-data:
-    name: ex04-ft-data
+    name: ex04-ha-ft-data
   ft-captures:
-    name: ex04-ft-captures
+    name: ex04-ha-ft-captures
   ft-logs:
-    name: ex04-ft-logs
+    name: ex04-ha-ft-logs
   test-results:
-    name: ex04-test-results
-  cert-manager-home:
-    name: ex04-cert-manager-home
-  cert-manager-tmp:
-    name: ex04-cert-manager-tmp
+    name: ex04-ha-test-results
   ft-user01-home:
-    name: ex04-ft-user01-home
+    name: ex04-ha-ft-user01-home
   ft-user02-home:
-    name: ex04-ft-user02-home
+    name: ex04-ha-ft-user02-home
   ft-shared:
-    name: ex04-ft-shared
+    name: ex04-ha-ft-shared
+  # Certificate manager volumes
+  cert-manager-home:
+    name: ex04-ha-cert-manager-home
+  cert-manager-tmp:
+    name: ex04-ha-cert-manager-tmp
 
 networks:
+  # Simulate internal networking for the cluster.
   n1:
     external: false
+    name: ex04-ha-n1
 
 services:
   # ═══════════════════════════════════════════════════════════════════════════
@@ -34,7 +45,7 @@ services:
   # ═══════════════════════════════════════════════════════════════════════════
   cert-manager:
     image: iwcd-cert-manager-u:alpine
-    container_name: ex04-cert-manager
+    container_name: ex04-ha-cert-manager
     volumes:
       - ./data/subjects:/mnt/data/certmgr
       - ./scripts/cert-manager-entrypoint.sh:/entrypoint.sh:ro
@@ -45,7 +56,7 @@ services:
       # TEST_PK_SECRET is the harness-level passphrase used by all subjects.
       # Each subject's set-env.sh resolves CRTMGR_PK_PASS from this variable,
       # keeping per-subject scope while enabling fully unattended operation.
-      - TEST_PK_SECRET=${EX04_TEST_PK_SECRET}
+      - TEST_PK_SECRET=${EX04_HA_TEST_PK_SECRET}
     command: ["/bin/sh", "/entrypoint.sh"]
     healthcheck:
       # Ready when both the server RSA cert and the ED25519 client key exist
@@ -63,22 +74,22 @@ services:
       - n1
 
   db:
-    image: ${EX04_POSTGRES_IMAGE}
+    image: ${EX04_HA_POSTGRES_IMAGE}
     # Refer to https://docs.docker.com/guides/databases/
     # about the docker-entrypoint-initdb.d directory
-    container_name: ex04-db
+    container_name: ex04-ha-db
     volumes:
       - ./scripts/init/postgres/create-dbs.sh:/docker-entrypoint-initdb.d/create-dbs.sh
-      - db-data:${EX04_POSTGRES_DATA_MOUNT_POINT}
+      - db-data:${EX04_HA_POSTGRES_DATA_MOUNT_POINT}
     environment:
-      - POSTGRES_USER=${EX04_POSTGRES_USER}
-      - POSTGRES_PASSWORD=${EX04_POSTGRES_PASS}
-      - EX04_WM_DB_NAME
-      - EX04_WM_DB_USER_NAME
-      - EX04_WM_DB_USER_PASS
-      - EX04_WM_ARCHIVE_DB_NAME
-      - EX04_WM_ARCHIVE_DB_USER_NAME
-      - EX04_WM_ARCHIVE_DB_USER_PASS
+      - POSTGRES_USER=${EX04_HA_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${EX04_HA_POSTGRES_PASS}
+      - EX04_HA_WM_DB_NAME
+      - EX04_HA_WM_DB_USER_NAME
+      - EX04_HA_WM_DB_USER_PASS
+      - EX04_HA_WM_ARCHIVE_DB_NAME
+      - EX04_HA_WM_ARCHIVE_DB_USER_NAME
+      - EX04_HA_WM_ARCHIVE_DB_USER_PASS
     networks:
       n1:
         aliases:
@@ -92,38 +103,45 @@ services:
 
   adminer:
     image: adminer
-    container_name: ex04-adminer
+    container_name: ex04-ha-adminer
     networks:
       - n1
     ports:
-      - ${EX04_PORT_PREFIX}80:8080
+      - ${EX04_HA_PORT_PREFIX}80:8080
     depends_on:
       db:
         condition: service_healthy
 
-  mft:
-    image: ${EX04_MFT_IMAGE}
-    container_name: ex04-mft
+  at1:
+    image: ex04-ha-at
+    build:
+      context: ./build/at
+      args:
+        - __from_img=${EX04_HA_MFT_IMAGE}
+    container_name: ex04-ha-at1
     networks:
       - n1
     depends_on:
       db:
         condition: service_healthy
     environment:
-      - EX04_WM_DB_NAME
-      - EX04_WM_DB_USER_NAME
-      - EX04_WM_DB_USER_PASS
+      - EX04_HA_WM_DB_NAME
+      - EX04_HA_WM_DB_USER_NAME
+      - EX04_HA_WM_DB_USER_PASS
 
-      - EX04_WM_ARCHIVE_DB_NAME
-      - EX04_WM_ARCHIVE_DB_USER_NAME
-      - EX04_WM_ARCHIVE_DB_USER_PASS
+      - EX04_HA_WM_ARCHIVE_DB_NAME
+      - EX04_HA_WM_ARCHIVE_DB_USER_NAME
+      - EX04_HA_WM_ARCHIVE_DB_USER_PASS
     volumes:
       - ./config/mft/application.properties:/opt/softwareag/IntegrationServer/application.properties
-      - mft-root:/opt/mft-root
+      - mft-vft:/opt/mft-vft
+      - at1-local:/opt/at-local
     ports:
-      - ${EX04_PORT_PREFIX}55:5555
-      - ${EX04_PORT_PREFIX}57:5557
-      - 5557:5557
+      # Default IS Administration Port, accessible to administrators only
+      - ${EX04_HA_PORT_PREFIX}55:5555
+      # Plan - Web Client port, accessible to normal users, to expose to internet
+      # Should be exposed via LB in this setup
+      - ${EX04_HA_PORT_PREFIX}60:51060
 
   # ═══════════════════════════════════════════════════════════════════════════
   # FTP Test Double – Classical (Pre-Quantum)
@@ -132,14 +150,14 @@ services:
   # ═══════════════════════════════════════════════════════════════════════════
   ft-test-double:
     image: iwcd-ft-test-double-u:alpine
-    container_name: ex04-ft-test-double
+    container_name: ex04-ha-ft-test-double
     depends_on:
       cert-manager:
         condition: service_healthy
     ports:
-      - "${EX04_PORT_PREFIX}21:2121"         # FTP (plain + STARTTLS / FTPES)
-      - "${EX04_PORT_PREFIX}22:2222"         # SFTP
-      - "${EX04_PORT_PREFIX}90:2990"         # FTPS implicit
+      - "${EX04_HA_PORT_PREFIX}21:2121"         # FTP (plain + STARTTLS / FTPES)
+      - "${EX04_HA_PORT_PREFIX}22:2222"         # SFTP
+      - "${EX04_HA_PORT_PREFIX}90:2990"         # FTPS implicit
       - "2180-2199:2180-2199"                # Passive data ports
     volumes:
       - ./scripts/ft-test-double-entrypoint.sh:/entrypoint.sh:ro
@@ -157,7 +175,7 @@ services:
       - ft-shared:/home/ftuser01/shared
       - ft-shared:/home/ftuser02/shared:ro
     environment:
-      - CRTMGR_PK_PASS=${EX04_TEST_PK_SECRET}   # passphrase for server TLS private key decryption
+      - CRTMGR_PK_PASS=${EX04_HA_TEST_PK_SECRET}   # passphrase for server TLS private key decryption
       - FT_SFTP_KEY_TYPE=rsa
       - FT_TLS_MODE=classical
       - OPENSSL_CONF=/etc/ft-test/config/openssl-classical.cnf
@@ -178,7 +196,7 @@ services:
   # ═══════════════════════════════════════════════════════════════════════════
   ft-test-client:
     image: iwcd-ft-test-client-u:alpine
-    container_name: ex04-ft-test-client
+    container_name: ex04-ha-ft-test-client
     depends_on:
       cert-manager:
         condition: service_healthy
